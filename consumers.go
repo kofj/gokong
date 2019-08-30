@@ -178,17 +178,13 @@ func (consumerClient *ConsumerClient) CreatePluginConfig(consumerId string, plug
 
 func (consumerClient *ConsumerClient) GetPluginConfig(consumerId string, pluginName string, id string) (*ConsumerPluginConfig, error) {
 
-	r, body, errs := newGet(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+consumerId+"/"+pluginName+"/"+id).End()
-	if errs != nil {
-		return nil, fmt.Errorf("could not get plugin config for consumer, error: %v", errs)
-	}
-
-	if r.StatusCode == 401 || r.StatusCode == 403 {
-		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	body, err := consumerClient.GetPluginConfigRaw(consumerId, pluginName, id)
+	if err != nil {
+		return nil, err
 	}
 
 	consumerPluginConfig := &ConsumerPluginConfig{}
-	err := json.Unmarshal([]byte(body), consumerPluginConfig)
+	err = json.Unmarshal([]byte(body), consumerPluginConfig)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse consumer plugin config response, error: %v", err)
 	}
@@ -200,6 +196,20 @@ func (consumerClient *ConsumerClient) GetPluginConfig(consumerId string, pluginN
 	consumerPluginConfig.Body = body
 
 	return consumerPluginConfig, nil
+}
+
+func (consumerClient *ConsumerClient) GetPluginConfigRaw(consumerId string, pluginName string, id string) (string, error) {
+
+	r, body, errs := newGet(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+consumerId+"/"+pluginName+"/"+id).End()
+	if errs != nil {
+		return "", fmt.Errorf("could not get plugin config for consumer, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return "", fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	return body, nil
 }
 
 func (consumerClient *ConsumerClient) DeletePluginConfig(consumerId string, pluginName string, id string) error {
